@@ -132,8 +132,9 @@ class MyPrecious {
 
   getTarballPath (spec, dep) {
     // TODO - this is obviously not good enough, but it's good for a demo
+    const dir = this.config.get('vendor-directory') || 'archived-packages'
     const filename = `${spec.name}-${dep.version}.tgz`
-    return path.join(this.prefix, 'archived-packages', filename)
+    return path.join(this.prefix, dir, filename)
   }
 
   updateLockfile (tree) {
