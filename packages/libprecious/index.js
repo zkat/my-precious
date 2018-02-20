@@ -126,7 +126,9 @@ class MyPrecious {
         .then(() => new BB((resolve, reject) => {
           const tardata = pacote.tarball.stream(spec, opts)
           const gunzip = zlib.createGunzip()
-          const sriStream = ssri.integrityStream()
+          const sriStream = ssri.integrityStream({
+            algorithms: dep.integrity && Object.keys(ssri.parse(dep.integrity))
+          })
           const out = fs.createWriteStream(pkgPath)
           let integrity
           sriStream.on('integrity', i => { integrity = i })
@@ -135,11 +137,14 @@ class MyPrecious {
           sriStream.on('error', reject)
           out.on('error', reject)
           out.on('close', () => resolve(integrity))
-          tardata.pipe(gunzip).pipe(sriStream).pipe(out)
+          tardata
+          .pipe(gunzip)
+          .pipe(sriStream)
+          .pipe(out)
         }))
         .then(tarIntegrity => {
           dep.resolved = `file:${path.relative(this.prefix, pkgPath)}`
-          dep.integrity = ssri.parse(dep.integrity || '').concat(tarIntegrity).toString()
+          dep.integrity = tarIntegrity.concat(dep.integrity || '').toString()
           this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
         })
         .then(() => next())
