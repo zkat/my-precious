@@ -11,7 +11,7 @@
     "prerelease": "npm t",
     "postrelease": "npm publish && git push --follow-tags",
     "pretest": "standard",
-    "release": "standard-version -s",
+    "release": "standard-version -s -t 'lib-v'",
     "test": "tap -J --nyc-arg=--all --coverage test/specs",
     "update-coc": "weallbehave -o . && git add CODE_OF_CONDUCT.md && git commit -m 'docs(coc): updated CODE_OF_CONDUCT.md'",
     "update-contrib": "weallcontribute -o . && git add CONTRIBUTING.md && git commit -m 'docs(contributing): updated CONTRIBUTING.md'"
@@ -32,6 +32,7 @@
   "license": "ISC",
   "dependencies": {
     "bluebird": "^3.5.1",
+    "detect-indent": "^5.0.0",
     "find-npm-prefix": "^1.0.2",
     "graceful-fs": "^4.1.11",
     "lock-verify": "^2.0.0",

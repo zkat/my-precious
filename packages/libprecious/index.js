@@ -3,6 +3,7 @@
 const BB = require('bluebird')
 
 const buildLogicalTree = require('npm-logical-tree')
+const detectIndent = require('detect-indent')
 const fs = require('graceful-fs')
 const getPrefix = require('find-npm-prefix')
 const lockVerify = require('lock-verify')
@@ -13,6 +14,7 @@ const path = require('path')
 
 const readFileAsync = BB.promisify(fs.readFile)
 const statAsync = BB.promisify(fs.stat)
+const writeFileAsync = BB.promisify(fs.writeFile)
 
 class MyPrecious {
   constructor (opts) {
@@ -34,6 +36,7 @@ class MyPrecious {
     return this.prepare()
     .then(() => this.saveTarballs(this.tree))
     .then(() => this.updateLockfile(this.tree))
+    .then(() => this.teardown())
     .then(() => { this.runTime = Date.now() - this.startTime })
     .catch(err => { this.teardown(); throw err })
     .then(() => this)
@@ -112,7 +115,6 @@ class MyPrecious {
         return next()
       } else {
         const pkgPath = this.getTarballPath(spec, dep)
-        this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
         const opts = pacoteOpts(this.config, {
           resolved: dep.resolved,
           integrity: dep.integrity
@@ -120,6 +122,7 @@ class MyPrecious {
         return pacote.tarball.toFile(spec, pkgPath, opts)
         .then(() => {
           dep.resolved = `file:${path.relative(this.prefix, pkgPath)}`
+          this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
         })
         .then(() => next())
         .then(() => { this.pkgCount++ })
@@ -130,15 +133,25 @@ class MyPrecious {
   getTarballPath (spec, dep) {
     // TODO - this is obviously not good enough, but it's good for a demo
     const filename = `${spec.name}-${dep.version}.tgz`
-    return path.join(this.prefix, 'package-archive', filename)
+    return path.join(this.prefix, 'archived-packages', filename)
   }
 
   updateLockfile (tree) {
-    this.pkg._shrinkwrap.dependencies = tree.toJSON()
-    return fs.writeFileAsync(
-      path.join(this.prefix, this.lockName),
-      JSON.stringify(this.pkg._shrinkwrap)
-    )
+    tree.forEach((dep, next) => {
+      if (dep.isRoot) { return next() }
+      const physDep = dep.address.split(':').reduce((obj, name, i) => {
+        return obj.dependencies[name]
+      }, this.pkg._shrinkwrap)
+      physDep.resolved = dep.resolved
+      next()
+    })
+    const lockPath = path.join(this.prefix, this.lockName)
+    return readFileAsync(lockPath, 'utf8')
+    .then(file => detectIndent(file).indent || 2)
+    .then(indent => writeFileAsync(
+      lockPath,
+      JSON.stringify(this.pkg._shrinkwrap, null, indent)
+    ))
   }
 }
 module.exports = MyPrecious
