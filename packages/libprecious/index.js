@@ -7,10 +7,13 @@ const detectIndent = require('detect-indent')
 const fs = require('graceful-fs')
 const getPrefix = require('find-npm-prefix')
 const lockVerify = require('lock-verify')
+const mkdirp = BB.promisify(require('mkdirp'))
 const npa = require('npm-package-arg')
 const pacote = require('pacote')
 const pacoteOpts = require('./lib/config/pacote-opts.js')
 const path = require('path')
+const ssri = require('ssri')
+const zlib = require('zlib')
 
 const readFileAsync = BB.promisify(fs.readFile)
 const statAsync = BB.promisify(fs.stat)
@@ -119,9 +122,24 @@ class MyPrecious {
           resolved: dep.resolved,
           integrity: dep.integrity
         })
-        return pacote.tarball.toFile(spec, pkgPath, opts)
-        .then(() => {
+        return mkdirp(path.dirname(pkgPath))
+        .then(() => new BB((resolve, reject) => {
+          const tardata = pacote.tarball.stream(spec, opts)
+          const gunzip = zlib.createGunzip()
+          const sriStream = ssri.integrityStream()
+          const out = fs.createWriteStream(pkgPath)
+          let integrity
+          sriStream.on('integrity', i => { integrity = i })
+          tardata.on('error', reject)
+          gunzip.on('error', reject)
+          sriStream.on('error', reject)
+          out.on('error', reject)
+          out.on('close', () => resolve(integrity))
+          tardata.pipe(gunzip).pipe(sriStream).pipe(out)
+        }))
+        .then(tarIntegrity => {
           dep.resolved = `file:${path.relative(this.prefix, pkgPath)}`
+          dep.integrity = ssri.parse(dep.integrity || '').concat(tarIntegrity).toString()
           this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
         })
         .then(() => next())
@@ -132,7 +150,7 @@ class MyPrecious {
 
   getTarballPath (spec, dep) {
     // TODO - this is obviously not good enough, but it's good for a demo
-    const filename = `${spec.name}-${dep.version}.tgz`
+    const filename = `${spec.name}-${dep.version}.tar`
     return path.join(this.prefix, 'archived-packages', filename)
   }
 
@@ -143,6 +161,7 @@ class MyPrecious {
         return obj.dependencies[name]
       }, this.pkg._shrinkwrap)
       physDep.resolved = dep.resolved
+      physDep.integrity = dep.integrity
       next()
     })
     const lockPath = path.join(this.prefix, this.lockName)
