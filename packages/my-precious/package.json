@@ -33,7 +33,7 @@
   },
   "license": "ISC",
   "dependencies": {
-    "libprecious": "^1.0.0",
+    "libprecious": "^1.0.1",
     "yargs": "^11.0.0"
   },
   "devDependencies": {
