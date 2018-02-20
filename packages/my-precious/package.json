@@ -1,6 +1,6 @@
 {
   "name": "my-precious",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "a local package archive, of my own",
   "bin": "index.js",
   "main": "index.js",
