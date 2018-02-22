@@ -112,7 +112,7 @@ class MyPrecious {
   saveTarballs (tree) {
     this.log.silly('extractTree', 'extracting dependencies to node_modules/')
     return tree.forEachAsync((dep, next) => {
-      if (dep.dev && this.config.get('production')) { return }
+      if (!this.checkDepEnv(dep)) { return }
       const spec = npa.resolve(dep.name, dep.version, this.prefix)
       if (dep.isRoot || spec.type === 'directory' || dep.bundled) {
         return next()
@@ -151,6 +151,21 @@ class MyPrecious {
         .then(() => { this.pkgCount++ })
       }
     }, {concurrency: 50, Promise: BB})
+  }
+
+  checkDepEnv (dep) {
+    const includeDev = (
+      // Covers --dev and --development (from npm config itself)
+      this.config.get('dev') ||
+      (
+        !/^prod(uction)?$/.test(this.config.get('only')) &&
+        !this.config.get('production')
+      ) ||
+      /^dev(elopment)?$/.test(this.config.get('only')) ||
+      /^dev(elopment)?$/.test(this.config.get('also'))
+    )
+    const includeProd = !/^dev(elopment)?$/.test(this.config.get('only'))
+    return (dep.dev && includeDev) || (!dep.dev && includeProd)
   }
 
   getTarballPath (spec, dep) {
