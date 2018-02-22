@@ -107,6 +107,48 @@ class MyPrecious {
     })
   }
 
+  archiveTarball (spec, dep) {
+    const pkgPath = this.getTarballPath(dep)
+    return mkdirp(path.dirname(pkgPath))
+    .then(() => new BB((resolve, reject) => {
+      const tardata = pacote.tarball.stream(spec, pacoteOpts(this.config, {
+        resolved: !dep.resolved.startsWith('file:') && dep.resolved,
+        integrity: dep.integrity
+      }))
+      const gunzip = zlib.createGunzip()
+      const sriStream = ssri.integrityStream({
+        algorithms: dep.integrity && Object.keys(ssri.parse(dep.integrity))
+      })
+      const out = fs.createWriteStream(pkgPath)
+      let integrity
+      sriStream.on('integrity', i => { integrity = i })
+      tardata.on('error', reject)
+      gunzip.on('error', reject)
+      sriStream.on('error', reject)
+      out.on('error', reject)
+      out.on('close', () => resolve(integrity))
+      tardata
+      .pipe(gunzip)
+      .pipe(sriStream)
+      .pipe(out)
+    }))
+    .then(tarIntegrity => {
+      this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
+      return {
+        resolved: `file:${path.relative(this.prefix, pkgPath)}`,
+        integrity: tarIntegrity.concat(dep.integrity || '').toString()
+      }
+    })
+  }
+
+  getTarballPath (dep) {
+    const shortHash = ssri.parse(dep.integrity.split(/\s+/)[0], {single: true})
+    .hexDigest()
+    .substr(0, 9)
+    const filename = `${dep.name}-${dep.version}-${shortHash}.tar`
+    return path.join(this.prefix, 'archived-packages', filename)
+  }
+
   saveTarballs (tree) {
     this.log.silly('extractTree', 'extracting dependencies to node_modules/')
     return tree.forEachAsync((dep, next) => {
@@ -115,36 +157,8 @@ class MyPrecious {
       if (dep.isRoot || spec.type === 'directory' || dep.bundled) {
         return next()
       } else {
-        const pkgPath = this.getTarballPath(spec, dep)
-        const opts = pacoteOpts(this.config, {
-          resolved: dep.resolved,
-          integrity: dep.integrity
-        })
-        return mkdirp(path.dirname(pkgPath))
-        .then(() => new BB((resolve, reject) => {
-          const tardata = pacote.tarball.stream(spec, opts)
-          const gunzip = zlib.createGunzip()
-          const sriStream = ssri.integrityStream({
-            algorithms: dep.integrity && Object.keys(ssri.parse(dep.integrity))
-          })
-          const out = fs.createWriteStream(pkgPath)
-          let integrity
-          sriStream.on('integrity', i => { integrity = i })
-          tardata.on('error', reject)
-          gunzip.on('error', reject)
-          sriStream.on('error', reject)
-          out.on('error', reject)
-          out.on('close', () => resolve(integrity))
-          tardata
-          .pipe(gunzip)
-          .pipe(sriStream)
-          .pipe(out)
-        }))
-        .then(tarIntegrity => {
-          dep.resolved = `file:${path.relative(this.prefix, pkgPath)}`
-          dep.integrity = tarIntegrity.concat(dep.integrity || '').toString()
-          this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
-        })
+        return this.archiveTarball(spec, dep)
+        .then(updated => Object.assign(dep, updated))
         .then(() => next())
         .then(() => { this.pkgCount++ })
       }
@@ -164,12 +178,6 @@ class MyPrecious {
     )
     const includeProd = !/^dev(elopment)?$/.test(this.config.get('only'))
     return (dep.dev && includeDev) || (!dep.dev && includeProd)
-  }
-
-  getTarballPath (spec, dep) {
-    // TODO - this is obviously not good enough, but it's good for a demo
-    const filename = `${spec.name}-${dep.version}.tar`
-    return path.join(this.prefix, 'archived-packages', filename)
   }
 
   updateLockfile (tree) {
