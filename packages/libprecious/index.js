@@ -99,9 +99,7 @@ class MyPrecious {
         result.warnings.forEach(w => this.log.warn('lockfile', w))
       } else {
         throw new Error(
-          'we can only install packages when your package.json and package-lock.json or ' +
-          'npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` ' +
-          'before continuing.\n\n' +
+          'we can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.\n\n' +
           result.warnings.map(w => 'Warning: ' + w).join('\n') + '\n' +
           result.errors.join('\n') + '\n'
         )
