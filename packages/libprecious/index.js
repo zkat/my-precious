@@ -136,9 +136,19 @@ class MyPrecious {
       this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
       const resolvedPath = path.relative(this.prefix, pkgPath)
       .replace(/\\/g, '/')
+      let integrity
+      if (!dep.integrity) {
+        integrity = tarIntegrity.toString()
+      } else if (dep.integrity.indexOf(tarIntegrity.toString()) !== -1) {
+        // TODO - this is a stopgap until `ssri#concat` (or a new
+        // `ssri#merge`) become availble.
+        integrity = dep.integrity
+      } else {
+        integrity = ssri.parse(dep.integrity).concat(tarIntegrity).toString()
+      }
       return {
         resolved: `file:${resolvedPath}`,
-        integrity: tarIntegrity.concat(dep.integrity || '').toString()
+        integrity
       }
     })
   }
