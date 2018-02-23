@@ -53,7 +53,7 @@ function mockConfig (testDir, opts) {
 
     global: false,
     group: process.platform === 'win32' ? 0
-            : process.env.SUDO_GID || (process.getgid && process.getgid()),
+      : process.env.SUDO_GID || (process.getgid && process.getgid()),
     heading: 'npm',
     'if-present': false,
     'ignore-prepublish': false,
