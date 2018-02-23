@@ -1,6 +1,6 @@
 {
   "name": "libprecious",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "a local package archive, of my own",
   "main": "index.js",
   "files": [
