@@ -45,7 +45,7 @@ test('it works', t => {
         dependencies: {
           bar: {
             version: '1.0.1',
-            resolved: REGISTRY + '/bar/-/bar-1.0.1.tgz',
+            resolved: REGISTRY + 'bar/-/bar-1.0.1.tgz',
             integrity
           }
         }
@@ -54,7 +54,7 @@ test('it works', t => {
     fixture.create(testDir)
     const config = mockConfig(testDir, {registry: REGISTRY})
     tnock(t, REGISTRY).get('/bar/-/bar-1.0.1.tgz').reply(200, tgzData)
-    const archivedResolved = `file:archived-packages/bar-1.0.1-${ssri.parse(integrity).hexDigest().slice(0, 9)}`
+    const archivedResolved = `file:archived-packages/bar-1.0.1-${ssri.parse(integrity).hexDigest().slice(0, 9)}.tar`
     return new MyPrecious({log: npmlog, config})
     .run()
     .then(() => fs.readFileAsync('package-lock.json', 'utf8'))
