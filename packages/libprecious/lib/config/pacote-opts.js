@@ -25,7 +25,7 @@ function pacoteOpts (npmOpts, moreOpts) {
     offline: npmOpts.get('offline'),
     projectScope: moreOpts.rootPkg && getProjectScope(moreOpts.rootPkg.name),
     proxy: npmOpts.get('https-proxy') || npmOpts.get('proxy'),
-    refer: 'cipm',
+    refer: 'libprecious',
     registry: npmOpts.get('registry'),
     retry: {
       retries: npmOpts.get('fetch-retries'),
