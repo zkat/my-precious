@@ -134,8 +134,10 @@ class MyPrecious {
     }))
     .then(tarIntegrity => {
       this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
+      const resolvedPath = path.relative(this.prefix, pkgPath)
+      .replace(/\\/g, '/')
       return {
-        resolved: `file:${path.relative(this.prefix, pkgPath)}`,
+        resolved: `file:${resolvedPath}`,
         integrity: tarIntegrity.concat(dep.integrity || '').toString()
       }
     })
