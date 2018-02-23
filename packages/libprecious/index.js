@@ -112,7 +112,9 @@ class MyPrecious {
     .then(() => new BB((resolve, reject) => {
       const tardata = pacote.tarball.stream(spec, this.config.toPacote({
         log: this.log,
-        resolved: !dep.resolved.startsWith('file:') && dep.resolved,
+        resolved: dep.resolved &&
+          !dep.resolved.startsWith('file:') &&
+          dep.resolved,
         integrity: dep.integrity
       }))
       const gunzip = zlib.createGunzip()
