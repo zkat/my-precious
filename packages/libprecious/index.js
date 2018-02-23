@@ -11,9 +11,11 @@ const mkdirp = BB.promisify(require('mkdirp'))
 const npa = require('npm-package-arg')
 const pacote = require('pacote')
 const path = require('path')
+const rimraf = BB.promisify(require('rimraf'))
 const ssri = require('ssri')
 const zlib = require('zlib')
 
+const readdirAsync = BB.promisify(fs.readdir)
 const readFileAsync = BB.promisify(fs.readFile)
 const statAsync = BB.promisify(fs.stat)
 const writeFileAsync = BB.promisify(fs.writeFile)
@@ -27,17 +29,21 @@ class MyPrecious {
     this.startTime = Date.now()
     this.runTime = 0
     this.pkgCount = 0
+    this.removed = 0
 
     // Misc
     this.log = this.opts.log || require('./lib/silentlog.js')
     this.pkg = null
     this.tree = null
+    this.archives = new Set()
   }
 
   run () {
     return this.prepare()
+    .then(() => this.findExisting())
     .then(() => this.saveTarballs(this.tree))
     .then(() => this.updateLockfile(this.tree))
+    .then(() => this.cleanupArchives())
     .then(() => this.teardown())
     .then(() => { this.runTime = Date.now() - this.startTime })
     .catch(err => { this.teardown(); throw err })
@@ -58,6 +64,7 @@ class MyPrecious {
     )
     .then(prefix => {
       this.prefix = prefix
+      this.archiveDir = path.join(prefix, 'archived-packages')
       this.log.silly('init', 'prefix: ' + prefix)
       return BB.join(
         readJson(prefix, 'package.json'),
@@ -106,8 +113,36 @@ class MyPrecious {
     })
   }
 
+  findExisting () {
+    return readdirAsync(this.archiveDir)
+    .catch(err => {
+      if (err.code === 'ENOENT') { return [] }
+      throw err
+    })
+    // Get scoped ones and read _their_ dirs.
+    .then(existing => {
+      return BB.all(
+        existing.filter(f => f.match(/^@/))
+        .map(f => {
+          return readdirAsync(path.join(this.archiveDir, f))
+          .then(subfiles => subfiles.map(subf => `${f}/${subf}`))
+        })
+      )
+      .then(scoped => scoped.reduce((acc, scoped) => {
+        return acc.concat(scoped)
+      }, existing.filter(f => !f.match(/^@/))))
+    })
+    .then(allExisting => { this.existingArchives = new Set(allExisting) })
+  }
+
   archiveTarball (spec, dep) {
     const pkgPath = this.getTarballPath(dep)
+    const relpath = path.relative(this.archiveDir, pkgPath)
+    this.archives.add(relpath)
+    if (this.existingArchives.has(path.relative(this.archiveDir, pkgPath))) {
+      this.log.silly('archiveTarball', `skipping exist archive for ${spec}`)
+      return BB.resolve(null)
+    }
     return mkdirp(path.dirname(pkgPath))
     .then(() => new BB((resolve, reject) => {
       const tardata = pacote.tarball.stream(spec, this.config.toPacote({
@@ -163,7 +198,7 @@ class MyPrecious {
     .hexDigest()
     .substr(0, 9)
     const filename = `${dep.name}-${dep.version}-${shortHash}.tar`
-    return path.join(this.prefix, 'archived-packages', filename)
+    return path.join(this.archiveDir, filename)
   }
 
   saveTarballs (tree) {
@@ -175,9 +210,13 @@ class MyPrecious {
         return next()
       } else {
         return this.archiveTarball(spec, dep)
-        .then(updated => Object.assign(dep, updated))
+        .then(updated => {
+          if (updated) {
+            Object.assign(dep, updated)
+            this.pkgCount++
+          }
+        })
         .then(() => next())
-        .then(() => { this.pkgCount++ })
       }
     }, {concurrency: 50, Promise: BB})
   }
@@ -214,6 +253,20 @@ class MyPrecious {
       lockPath,
       JSON.stringify(this.pkg._shrinkwrap, null, indent)
     ))
+  }
+
+  cleanupArchives () {
+    const removeMe = []
+    for (let f of this.existingArchives.values()) {
+      if (!this.archives.has(f)) {
+        removeMe.push(f)
+      }
+    }
+    if (removeMe.length) {
+      this.log.silly('cleanupArchives', 'removing', removeMe.length, 'dangling archives')
+      this.removed = removeMe.length
+    }
+    return BB.map(removeMe, f => rimraf(path.join(this.archiveDir, f)))
   }
 }
 module.exports = MyPrecious
