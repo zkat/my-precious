@@ -4,6 +4,7 @@ const BB = require('bluebird')
 
 const buildLogicalTree = require('npm-logical-tree')
 const detectIndent = require('detect-indent')
+const detectNewline = require('detect-newline')
 const fs = require('graceful-fs')
 const getPrefix = require('find-npm-prefix')
 const lockVerify = require('lock-verify')
@@ -248,11 +249,15 @@ class MyPrecious {
     })
     const lockPath = path.join(this.prefix, this.lockName)
     return readFileAsync(lockPath, 'utf8')
-    .then(file => detectIndent(file).indent || 2)
-    .then(indent => writeFileAsync(
-      lockPath,
-      JSON.stringify(this.pkg._shrinkwrap, null, indent)
-    ))
+    .then(file => {
+      const indent = detectIndent(file).indent || 2
+      const ending = detectNewline.graceful(file)
+      return writeFileAsync(
+        lockPath,
+        JSON.stringify(this.pkg._shrinkwrap, null, indent)
+        .replace(/\n/g, ending)
+      )
+    })
   }
 
   cleanupArchives () {

@@ -33,6 +33,7 @@
   "dependencies": {
     "bluebird": "^3.5.1",
     "detect-indent": "^5.0.0",
+    "detect-newline": "^2.1.0",
     "find-npm-prefix": "^1.0.2",
     "graceful-fs": "^4.1.11",
     "lock-verify": "^2.0.0",
