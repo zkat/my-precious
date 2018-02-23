@@ -10,7 +10,6 @@ const lockVerify = require('lock-verify')
 const mkdirp = BB.promisify(require('mkdirp'))
 const npa = require('npm-package-arg')
 const pacote = require('pacote')
-const pacoteOpts = require('./lib/config/pacote-opts.js')
 const path = require('path')
 const ssri = require('ssri')
 const zlib = require('zlib')
@@ -111,7 +110,7 @@ class MyPrecious {
     const pkgPath = this.getTarballPath(dep)
     return mkdirp(path.dirname(pkgPath))
     .then(() => new BB((resolve, reject) => {
-      const tardata = pacote.tarball.stream(spec, pacoteOpts(this.config, {
+      const tardata = pacote.tarball.stream(spec, this.config.toPacote({
         resolved: !dep.resolved.startsWith('file:') && dep.resolved,
         integrity: dep.integrity
       }))
