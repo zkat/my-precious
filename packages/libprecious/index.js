@@ -146,7 +146,9 @@ class MyPrecious {
         // `ssri#merge`) become availble.
         integrity = dep.integrity
       } else {
-        integrity = ssri.parse(dep.integrity).concat(tarIntegrity).toString()
+        // concat needs to be in this order 'cause apparently it's what npm
+        // expects to do.
+        integrity = tarIntegrity.concat(dep.integrity).toString()
       }
       return {
         resolved: `file:${resolvedPath}`,
@@ -156,7 +158,8 @@ class MyPrecious {
   }
 
   getTarballPath (dep) {
-    const shortHash = ssri.parse(dep.integrity.split(/\s+/)[0], {single: true})
+    const split = dep.integrity.split(/\s+/)
+    const shortHash = ssri.parse(split[split.length - 1], {single: true})
     .hexDigest()
     .substr(0, 9)
     const filename = `${dep.name}-${dep.version}-${shortHash}.tar`
