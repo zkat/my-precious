@@ -52,8 +52,6 @@ class MyPrecious {
   }
 
   prepare () {
-    this.log.level = this.config.get('loglevel')
-
     return (
       this.config.get('prefix') && this.config.get('global')
       ? BB.resolve(this.config.get('prefix'))
