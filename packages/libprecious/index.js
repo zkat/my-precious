@@ -206,7 +206,9 @@ class MyPrecious {
     } else if (spec.type === 'directory') {
       suffix = 'directory'
     }
-    if (dep.integrity) {
+    if (dep.integrity && (
+      spec.registry || spec.type === 'file' || spec.type === 'remote'
+    )) {
       const split = dep.integrity.split(/\s+/)
       const shortHash = ssri.parse(split[split.length - 1], {single: true})
       .hexDigest()
