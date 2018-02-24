@@ -191,11 +191,29 @@ class MyPrecious {
   }
 
   getTarballPath (dep) {
-    const split = dep.integrity.split(/\s+/)
-    const shortHash = ssri.parse(split[split.length - 1], {single: true})
-    .hexDigest()
-    .substr(0, 9)
-    const filename = `${dep.name}-${dep.version}-${shortHash}.tar`
+    let suffix
+    const spec = npa.resolve(dep.name, dep.version, this.prefix)
+    if (spec.registry) {
+      suffix = dep.version
+    } else if (spec.type === 'remote') {
+      suffix = 'remote'
+    } else if (spec.type === 'file') {
+      suffix = 'file'
+    } else if (spec.hosted) {
+      suffix = `${spec.hosted.type}-${spec.hosted.user}-${spec.hosted.project}-${spec.gitCommittish}`
+    } else if (spec.type === 'git') {
+      suffix = `git-${spec.gitCommittish}`
+    } else if (spec.type === 'directory') {
+      suffix = 'directory'
+    }
+    if (dep.integrity) {
+      const split = dep.integrity.split(/\s+/)
+      const shortHash = ssri.parse(split[split.length - 1], {single: true})
+      .hexDigest()
+      .substr(0, 9)
+      suffix += `-${shortHash}`
+    }
+    const filename = `${dep.name}-${suffix}.tar`
     return path.join(this.archiveDir, filename)
   }
 
