@@ -118,7 +118,6 @@ class MyPrecious {
       if (err.code === 'ENOENT') { return [] }
       throw err
     })
-    // Get scoped ones and read _their_ dirs.
     .then(existing => {
       return BB.all(
         existing.filter(f => f.match(/^@/))
