@@ -136,37 +136,42 @@ class MyPrecious {
   archiveTarball (spec, dep) {
     const pkgPath = this.getTarballPath(dep)
     const relpath = path.relative(this.archiveDir, pkgPath)
+    const alreadyExists = this.existingArchives.has(
+      path.relative(this.archiveDir, pkgPath)
+    )
+    const algorithms = dep.integrity && Object.keys(ssri.parse(dep.integrity))
     this.archives.add(relpath)
-    if (this.existingArchives.has(path.relative(this.archiveDir, pkgPath))) {
-      this.log.silly('archiveTarball', `skipping exist archive for ${spec}`)
-      return BB.resolve(null)
-    }
     return mkdirp(path.dirname(pkgPath))
-    .then(() => new BB((resolve, reject) => {
-      const tardata = pacote.tarball.stream(spec, this.config.toPacote({
-        log: this.log,
-        resolved: dep.resolved &&
+    .then(() => {
+      if (alreadyExists) {
+        this.log.silly('archiveTarball', `archive for ${spec} already exists`)
+        return ssri.fromStream(fs.createReadStream(pkgPath), {algorithms})
+      }
+      return new BB((resolve, reject) => {
+        const tardata = pacote.tarball.stream(spec, this.config.toPacote({
+          log: this.log,
+          resolved: dep.resolved &&
           !dep.resolved.startsWith('file:') &&
           dep.resolved,
-        integrity: dep.integrity
-      }))
-      const gunzip = zlib.createGunzip()
-      const sriStream = ssri.integrityStream({
-        algorithms: dep.integrity && Object.keys(ssri.parse(dep.integrity))
+          integrity: dep.integrity
+        }))
+        const gunzip = zlib.createGunzip()
+        const sriStream = ssri.integrityStream({algorithms})
+        const out = fs.createWriteStream(pkgPath)
+        let integrity
+        sriStream.on('integrity', i => { integrity = i })
+        tardata.on('error', reject)
+        gunzip.on('error', reject)
+        sriStream.on('error', reject)
+        out.on('error', reject)
+        out.on('close', () => resolve(integrity))
+        tardata
+        .pipe(gunzip)
+        .pipe(sriStream)
+        .pipe(out)
       })
-      const out = fs.createWriteStream(pkgPath)
-      let integrity
-      sriStream.on('integrity', i => { integrity = i })
-      tardata.on('error', reject)
-      gunzip.on('error', reject)
-      sriStream.on('error', reject)
-      out.on('error', reject)
-      out.on('close', () => resolve(integrity))
-      tardata
-      .pipe(gunzip)
-      .pipe(sriStream)
-      .pipe(out)
-    }))
+      .tap(() => { this.pkgCount++ })
+    })
     .then(tarIntegrity => {
       this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
       const resolvedPath = path.relative(this.prefix, pkgPath)
@@ -228,12 +233,7 @@ class MyPrecious {
         return next()
       } else {
         return this.archiveTarball(spec, dep)
-        .then(updated => {
-          if (updated) {
-            Object.assign(dep, updated)
-            this.pkgCount++
-          }
-        })
+        .then(updated => Object.assign(dep, updated))
         .then(() => next())
       }
     }, {concurrency: 50, Promise: BB})
