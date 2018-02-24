@@ -21,13 +21,26 @@ function cliMain () {
     })
   })
   .then(precious => precious.run())
-  .then(
-    details => console.error(`saved ${
-      details.pkgCount
-    } tarballs in ${
-      details.runTime / 1000
-    }s`),
-    err => console.error(`my-precious failed:
-      n${err.message}\n${err.stack}`)
-  )
+  .then(details => {
+    const clauses = []
+    if (!details.pkgCount && !details.removed) {
+      clauses.push('done')
+    }
+    if (details.pkgCount) {
+      clauses.push(`archived ${details.pkgCount} package${
+        details.pkgCount === 1 ? '' : 's'
+      }`)
+    }
+    if (details.removed) {
+      clauses.push(`cleaned up ${details.pkgCount} archive${
+        details.removed === 1 ? '' : 's'
+      }`)
+    }
+    const time = details.runTime / 1000
+    console.error(`${clauses.join(' and ')} in ${time}s`)
+  })
+  .catch(err => {
+    npmlog.error('', err.message)
+    npmlog.verbose('', err.stack)
+  })
 }
