@@ -1,4 +1,7 @@
 'use strict'
+// This needs to be added to access our git binstub
+const path = require('path')
+process.env.PATH = path.resolve(__dirname, 'bin-stubs') + ':' + process.env.PATH
 
 const BB = require('bluebird')
 
@@ -199,6 +202,74 @@ test('it does not archive devdeps with `only=production` config', t => {
             REGISTRY + 'bar/-/bar-1.0.1.tgz',
             'resolved field not updated in package-lock'
           )
+        })
+    })
+})
+
+test('it works with git dependencies', t => {
+  return mockTar({
+    // This makes a tarball so we can get an integrity hash for it
+    'package.json': JSON.stringify({
+      name: 'bar',
+      version: '1.0.1'
+    }),
+    'index.js': 'hi'
+  }, {gzip: false})
+    .then(tarData => ssri.fromData(tarData).toString())
+    .then(integrity => {
+      fs.writeFileSync(path.resolve(__dirname, 'bin-stubs/git'), [
+        '#!/usr/bin/env bash',
+        'echo \'{"name":"bar","version":"1.0.1"}\' > package.json',
+        'echo hi > index.js'
+      ].join('\n'))
+      const fixture = new Tacks(Dir({
+        'package.json': File({
+          name: 'foo',
+          version: '1.2.3',
+          dependencies: {
+            bar: 'github:npm/bar#6d75a6a'
+          }
+        }),
+        'package-lock.json': File({
+          name: 'foo',
+          lockfileVersion: 1,
+          requires: true,
+          dependencies: {
+            bar: {
+              version: 'github:npm/bar#6d75a6a'
+            }
+          }
+        })
+      }))
+      fixture.create(testDir)
+      const config = mockConfig(testDir, {registry: REGISTRY})
+      const archivedResolved = `file:archived-packages/bar-github-npm-bar-6d75a6a.tar`
+      return new MyPrecious({log: npmlog, config})
+        .run()
+        .then(() => fs.readFileAsync('package-lock.json', 'utf8'))
+        .then(JSON.parse)
+        .then(pkgLock => {
+          t.equal(
+            pkgLock.dependencies.bar.resolved,
+            archivedResolved,
+            'resolved field updated in npm-shrinkwrap'
+          )
+          return fs.readFileAsync(archivedResolved.substr(5))
+            .then(tarData => {
+              const newSri = pkgLock.dependencies.bar.integrity
+              t.ok(
+                ssri.checkData(tarData, newSri),
+                'archived tarball passes integrity check'
+              )
+              t.ok(
+                ssri.checkData(tarData, newSri),
+                'updated integrity field still matches old tgzData'
+              )
+              t.notOk(
+                ssri.checkData('blah', newSri),
+                'updated integrity field is actually checking data at all'
+              )
+            })
         })
     })
 })

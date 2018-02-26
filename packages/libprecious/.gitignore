@@ -3,3 +3,4 @@
 /bin/node_modules
 /.nyc_output
 /test/cache
+/test/bin-stubs/
