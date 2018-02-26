@@ -7,6 +7,8 @@ const mockConfig = require('./util/mock-config.js')
 const mockTar = require('./util/mock-tarball.js')
 const tnock = require('./util/tnock.js')
 const npmlog = require('npmlog')
+const PassThrough = require('stream').PassThrough
+const requireInject = require('require-inject')
 const ssri = require('ssri')
 const Tacks = require('tacks')
 const test = require('tap').test
@@ -18,6 +20,8 @@ const Dir = Tacks.Dir
 const File = Tacks.File
 
 const REGISTRY = 'https://my.mock.registry/'
+
+npmlog.level = process.env.LOGLEVEL || 'silent'
 
 test('it works', t => {
   return mockTar({
@@ -199,6 +203,85 @@ test('it does not archive devdeps with `only=production` config', t => {
             REGISTRY + 'bar/-/bar-1.0.1.tgz',
             'resolved field not updated in package-lock'
           )
+        })
+    })
+})
+
+test('it works with git dependencies', t => {
+  return mockTar({
+    // This makes a tarball so we can get an integrity hash for it
+    'package.json': JSON.stringify({
+      name: 'bar',
+      version: '1.0.1'
+    }),
+    'index.js': 'hi'
+  }, {gzip: true})
+    .then(tarData => {
+      const fixture = new Tacks(Dir({
+        'package.json': File({
+          name: 'foo',
+          version: '1.2.3',
+          dependencies: {
+            bar: 'github:npm/bar#6d75a6a'
+          }
+        }),
+        'package-lock.json': File({
+          name: 'foo',
+          lockfileVersion: 1,
+          requires: true,
+          dependencies: {
+            bar: {
+              version: 'github:npm/bar#6d75a6a'
+            }
+          }
+        })
+      }))
+      fixture.create(testDir)
+      const config = mockConfig(testDir, {registry: REGISTRY})
+      const archivedResolved = `file:archived-packages/bar-github-npm-bar-6d75a6a.tar`
+      const GitPrecious = requireInject('../index.js', {
+        'pacote': {
+          tarball: {
+            stream (spec, opts) {
+              t.equal(spec.toString(), 'bar@github:npm/bar#6d75a6a', 'spec is correct')
+              t.notOk(opts.resolve, 'no resolved field for git deps')
+              const stream = new PassThrough()
+              stream.on('newListener', (ev, l) => {
+                if (ev === 'data') {
+                  stream.end(tarData)
+                }
+              })
+              return stream
+            }
+          }
+        }
+      })
+      return new GitPrecious({log: npmlog, config})
+        .run()
+        .then(() => fs.readFileAsync('package-lock.json', 'utf8'))
+        .then(JSON.parse)
+        .then(pkgLock => {
+          t.equal(
+            pkgLock.dependencies.bar.resolved,
+            archivedResolved,
+            'resolved field updated in pkglock'
+          )
+          return fs.readFileAsync(archivedResolved.substr(5))
+            .then(tarData => {
+              const newSri = pkgLock.dependencies.bar.integrity
+              t.ok(
+                ssri.checkData(tarData, newSri),
+                'archived tarball passes integrity check'
+              )
+              t.ok(
+                ssri.checkData(tarData, newSri),
+                'updated integrity field still matches old tgzData'
+              )
+              t.notOk(
+                ssri.checkData('blah', newSri),
+                'updated integrity field is actually checking data at all'
+              )
+            })
         })
     })
 })
