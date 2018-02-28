@@ -21,6 +21,8 @@ const File = Tacks.File
 
 const REGISTRY = 'https://my.mock.registry/'
 
+npmlog.level = process.env.LOGLEVEL || 'silent'
+
 test('it works', t => {
   return mockTar({
     // This makes the tarball for `bar` itself, to be hosted by tnock
