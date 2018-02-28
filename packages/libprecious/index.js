@@ -29,6 +29,7 @@ class MyPrecious {
     // Stats
     this.startTime = Date.now()
     this.runTime = 0
+    this.timings = {}
     this.pkgCount = 0
     this.removed = 0
 
@@ -39,30 +40,46 @@ class MyPrecious {
     this.archives = new Set()
   }
 
+  timedStage (name) {
+    const start = Date.now()
+    return BB.resolve(this[name].apply(this, [].slice.call(arguments, 1)))
+    .tap(() => {
+      this.timings[name] = Date.now() - start
+      this.log.info(name, `Done in ${this.timings[name] / 1000}s`)
+    })
+  }
+
   run () { return this.archive() }
   archive () {
-    return this.prepare()
-    .then(() => this.findExisting())
-    .then(() => this.saveTarballs(this.tree))
-    .then(() => this.updateLockfile(this.tree))
-    .then(() => this.cleanupArchives())
-    .then(() => this.teardown())
+    return this.timedStage('prepare')
+    .then(() => this.timedStage('findExisting'))
+    .then(() => this.timedStage('saveTarballs', this.tree))
+    .then(() => this.timedStage('updateLockfile', this.tree))
+    .then(() => this.timedStage('cleanupArchives'))
+    .then(() => this.timedStage('teardown'))
     .then(() => { this.runTime = Date.now() - this.startTime })
-    .catch(err => { this.teardown(); throw err })
+    .catch(err => { this.timedStage('teardown'); throw err })
     .then(() => this)
   }
 
   unarchive () {
-    return this.prepare()
-    .then(() => this.restoreDependencies(this.tree))
-    .then(() => this.updateLockfile(this.tree))
-    .then(() => this.removeTarballs())
-    .then(() => { this.runTime = Date.now() - this.startTime })
-    .catch(err => { this.teardown(); throw err })
+    return this.timedStage('prepare')
+    .then(() => this.timedStage('restoreDependencies', this.tree))
+    .then(() => this.timedStage('updateLockfile', this.tree))
+    .then(() => this.timedStage('removeTarballs'))
+    .then(() => {
+      this.runTime = Date.now() - this.startTime
+      this.log.info(
+        'run-time',
+        `total run time: ${this.runTime / 1000}s`
+      )
+    })
+    .catch(err => { this.timedStage('teardown'); throw err })
     .then(() => this)
   }
 
   prepare () {
+    this.log.info('prepare', 'initializing installer')
     return (
       this.config.get('prefix') && this.config.get('global')
       ? BB.resolve(this.config.get('prefix'))
@@ -75,7 +92,7 @@ class MyPrecious {
     .then(prefix => {
       this.prefix = prefix
       this.archiveDir = path.join(prefix, 'archived-packages')
-      this.log.silly('init', 'prefix: ' + prefix)
+      this.log.verbose('prepare', 'package prefix: ' + prefix)
       return BB.join(
         readJson(prefix, 'package.json'),
         readJson(prefix, 'package-lock.json', true),
@@ -102,7 +119,7 @@ class MyPrecious {
   }
 
   checkLock () {
-    this.log.silly('checkLock', 'verifying package-lock data')
+    this.log.info('checkLock', 'verifying package-lock data')
     const pkg = this.pkg
     const prefix = this.prefix
     if (!pkg._shrinkwrap || !pkg._shrinkwrap.lockfileVersion) {
@@ -124,6 +141,7 @@ class MyPrecious {
   }
 
   findExisting () {
+    this.log.info('findExisting', 'checking for existing archived packages')
     return readdirAsync(this.archiveDir)
     .catch(err => {
       if (err.code === 'ENOENT') { return [] }
@@ -146,6 +164,7 @@ class MyPrecious {
 
   archiveTarball (spec, dep) {
     const pkgPath = this.getTarballPath(dep)
+    this.log.silly('archiveTarball', `${spec} -> ${pkgPath}`)
     const relpath = path.relative(this.archiveDir, pkgPath)
     const alreadyExists = this.existingArchives.has(
       path.relative(this.archiveDir, pkgPath)
@@ -184,7 +203,6 @@ class MyPrecious {
       .tap(() => { this.pkgCount++ })
     })
     .then(tarIntegrity => {
-      this.log.silly('saveTarballs', `${spec} -> ${pkgPath}`)
       const resolvedPath = path.relative(this.prefix, pkgPath)
       .replace(/\\/g, '/')
       let integrity
@@ -252,7 +270,7 @@ class MyPrecious {
   }
 
   saveTarballs (tree) {
-    this.log.silly('extractTree', 'extracting dependencies to node_modules/')
+    this.log.info('saveTarballs', 'archiving packages to', this.archiveDir)
     return tree.forEachAsync((dep, next) => {
       if (!this.checkDepEnv(dep)) { return }
       const spec = npa.resolve(dep.name, dep.version, this.prefix)
@@ -287,6 +305,7 @@ class MyPrecious {
   }
 
   updateLockfile (tree) {
+    this.log.info('updateLockfile', 'updating details in lockfile')
     tree.forEach((dep, next) => {
       if (dep.isRoot) { return next() }
       const physDep = dep.address.split(':').reduce((obj, name, i) => {
@@ -325,7 +344,7 @@ class MyPrecious {
       }
     }
     if (removeMe.length) {
-      this.log.silly('cleanupArchives', 'removing', removeMe.length, 'dangling archives')
+      this.log.info('cleanupArchives', 'removing', removeMe.length, 'dangling archives')
       this.removed = removeMe.length
     }
     return BB.map(removeMe, f => rimraf(path.join(this.archiveDir, f)))
