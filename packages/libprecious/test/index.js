@@ -1,7 +1,4 @@
 'use strict'
-// This needs to be added to access our git binstub
-const path = require('path')
-process.env.PATH = path.resolve(__dirname, 'bin-stubs') + ':' + process.env.PATH
 
 const BB = require('bluebird')
 
@@ -10,6 +7,8 @@ const mockConfig = require('./util/mock-config.js')
 const mockTar = require('./util/mock-tarball.js')
 const tnock = require('./util/tnock.js')
 const npmlog = require('npmlog')
+const PassThrough = require('stream').PassThrough
+const requireInject = require('require-inject')
 const ssri = require('ssri')
 const Tacks = require('tacks')
 const test = require('tap').test
@@ -214,14 +213,8 @@ test('it works with git dependencies', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: false})
-    .then(tarData => ssri.fromData(tarData).toString())
-    .then(integrity => {
-      fs.writeFileSync(path.resolve(__dirname, 'bin-stubs/git'), [
-        '#!/usr/bin/env bash',
-        'echo \'{"name":"bar","version":"1.0.1"}\' > package.json',
-        'echo hi > index.js'
-      ].join('\n'))
+  }, {gzip: true})
+    .then(tarData => {
       const fixture = new Tacks(Dir({
         'package.json': File({
           name: 'foo',
@@ -244,7 +237,24 @@ test('it works with git dependencies', t => {
       fixture.create(testDir)
       const config = mockConfig(testDir, {registry: REGISTRY})
       const archivedResolved = `file:archived-packages/bar-github-npm-bar-6d75a6a.tar`
-      return new MyPrecious({log: npmlog, config})
+      const GitPrecious = requireInject('../index.js', {
+        'pacote': {
+          tarball: {
+            stream (spec, opts) {
+              t.equal(spec.toString(), 'bar@github:npm/bar#6d75a6a', 'spec is correct')
+              t.notOk(opts.resolve, 'no resolved field for git deps')
+              const stream = new PassThrough()
+              stream.on('newListener', (ev, l) => {
+                if (ev === 'data') {
+                  stream.end(tarData)
+                }
+              })
+              return stream
+            }
+          }
+        }
+      })
+      return new GitPrecious({log: npmlog, config})
         .run()
         .then(() => fs.readFileAsync('package-lock.json', 'utf8'))
         .then(JSON.parse)
@@ -252,7 +262,7 @@ test('it works with git dependencies', t => {
           t.equal(
             pkgLock.dependencies.bar.resolved,
             archivedResolved,
-            'resolved field updated in npm-shrinkwrap'
+            'resolved field updated in pkglock'
           )
           return fs.readFileAsync(archivedResolved.substr(5))
             .then(tarData => {
