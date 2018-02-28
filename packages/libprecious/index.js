@@ -39,13 +39,24 @@ class MyPrecious {
     this.archives = new Set()
   }
 
-  run () {
+  run () { return this.archive() }
+  archive () {
     return this.prepare()
     .then(() => this.findExisting())
     .then(() => this.saveTarballs(this.tree))
     .then(() => this.updateLockfile(this.tree))
     .then(() => this.cleanupArchives())
     .then(() => this.teardown())
+    .then(() => { this.runTime = Date.now() - this.startTime })
+    .catch(err => { this.teardown(); throw err })
+    .then(() => this)
+  }
+
+  unarchive () {
+    return this.prepare()
+    .then(() => this.restoreDependencies(this.tree))
+    .then(() => this.updateLockfile(this.tree))
+    .then(() => this.removeTarballs())
     .then(() => { this.runTime = Date.now() - this.startTime })
     .catch(err => { this.teardown(); throw err })
     .then(() => this)
@@ -195,6 +206,22 @@ class MyPrecious {
     })
   }
 
+  restoreDependencies (tree) {
+    this.log.info('restoreDependencies', 'removing archive details from dependencies locked')
+    return tree.forEachAsync((dep, next) => {
+      if (dep.isRoot || dep.bundled) { return next() }
+      const spec = npa.resolve(dep.name, dep.version, this.prefix)
+      return pacote.manifest(spec, this.config.toPacote({
+        log: this.log
+      }))
+      .then(mani => {
+        dep.resolved = mani._resolved || null
+        dep.integrity = mani._integrity || null
+      })
+      .then(next)
+    })
+  }
+
   getTarballPath (dep) {
     let suffix
     const spec = npa.resolve(dep.name, dep.version, this.prefix)
@@ -239,6 +266,11 @@ class MyPrecious {
     }, {concurrency: 50, Promise: BB})
   }
 
+  removeTarballs () {
+    this.log.info('removeTarballs', 'removing tarball archive')
+    return rimraf(this.archiveDir)
+  }
+
   checkDepEnv (dep) {
     const includeDev = (
       // Covers --dev and --development (from npm config itself)
@@ -260,8 +292,16 @@ class MyPrecious {
       const physDep = dep.address.split(':').reduce((obj, name, i) => {
         return obj.dependencies[name]
       }, this.pkg._shrinkwrap)
-      physDep.resolved = dep.resolved
-      physDep.integrity = dep.integrity
+      if (dep.resolved) {
+        physDep.resolved = dep.resolved
+      } else {
+        delete physDep.resolved
+      }
+      if (dep.integrity) {
+        physDep.integrity = dep.integrity
+      } else {
+        delete physDep.integrity
+      }
       next()
     })
     const lockPath = path.join(this.prefix, this.lockName)
