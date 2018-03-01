@@ -236,7 +236,14 @@ class MyPrecious {
         return next()
       }
       return pacote.manifest(spec, this.config.toPacote({
-        log: this.log
+        log: this.log,
+        integrity: (
+          spec.type === 'remote' ||
+          spec.registry ||
+          spec.type === 'local'
+        )
+          ? dep.integrity
+          : null
       }))
       .then(mani => {
         dep.resolved = mani._resolved || null
