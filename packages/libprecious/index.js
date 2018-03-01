@@ -229,6 +229,11 @@ class MyPrecious {
     return tree.forEachAsync((dep, next) => {
       if (dep.isRoot || dep.bundled) { return next() }
       const spec = npa.resolve(dep.name, dep.version, this.prefix)
+      if (spec.type === 'directory' || spec.type === 'git') {
+        dep.resolved = null
+        dep.integrity = null
+        return next()
+      }
       return pacote.manifest(spec, this.config.toPacote({
         log: this.log
       }))
