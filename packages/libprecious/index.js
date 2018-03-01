@@ -67,6 +67,7 @@ class MyPrecious {
     .then(() => this.timedStage('restoreDependencies', this.tree))
     .then(() => this.timedStage('updateLockfile', this.tree))
     .then(() => this.timedStage('removeTarballs'))
+    .then(() => this.timedStage('removeModules'))
     .then(() => {
       this.runTime = Date.now() - this.startTime
       this.log.info(
@@ -292,6 +293,11 @@ class MyPrecious {
   removeTarballs () {
     this.log.info('removeTarballs', 'removing tarball archive')
     return rimraf(this.archiveDir)
+  }
+
+  removeModules () {
+    this.log.info('removeModules', 'removing archive-installed node_modules/')
+    return rimraf(path.join(this.prefix, 'node_modules'))
   }
 
   checkDepEnv (dep) {
