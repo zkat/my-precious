@@ -11,12 +11,12 @@ platform:
 install:
   - ps: Install-Product node $env:nodejs_version $env:platform
   - npm config set spin false
-  - npm i -g npm@next
+  - npm i -g npmc
   - cd packages/libprecious
-  - npm ci
+  - npmc ci
 
 test_script:
-  - npm test
+  - npmc test
 
 matrix:
   fast_finish: true
