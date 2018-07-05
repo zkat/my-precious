@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.0.0"></a>
+# [2.0.0](https://github.com/zkat/my-precious/compare/lib-v1.9.0...2.0.0) (2018-07-05)
+
+
+### Bug Fixes
+
+* **deps:** bump to a fixed pacote version ([024d736](https://github.com/zkat/my-precious/commit/024d736))
+
+
+### meta
+
+* drop node4, add node10 ([b73a522](https://github.com/zkat/my-precious/commit/b73a522))
+
+
+### BREAKING CHANGES
+
+* this drops support for node@^4
+
+
+
 <a name="1.9.0"></a>
 # 1.9.0 (2018-03-01)
 
