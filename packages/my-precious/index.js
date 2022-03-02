@@ -4,7 +4,7 @@
 
 const MyPrecious = require('libprecious-next')
 const npmlog = require('npmlog')
-const fromNpm = require('libprecious/lib/config/npm-config.js').fromNpm
+const fromNpm = require('libprecious-next/lib/config/npm-config.js').fromNpm
 
 if (require.main === module) {
   cliMain()
