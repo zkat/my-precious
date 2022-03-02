@@ -1,6 +1,6 @@
 {
-  "name": "libprecious",
-  "version": "2.0.0",
+  "name": "libprecious-next",
+  "version": "2.1.0",
   "description": "a local package archive, of my own",
   "main": "index.js",
   "files": [
@@ -11,7 +11,7 @@
     "prerelease": "npm t",
     "postrelease": "npm publish && git push --follow-tags",
     "pretest": "standard",
-    "release": "standard-version -s -t 'lib-v'",
+    "release": "standard-version -s -t 'lib-v' -r minor",
     "test": "tap -J --nyc-arg=--all --coverage test/*.js",
     "update-coc": "weallbehave -o . && git add CODE_OF_CONDUCT.md && git commit -m 'docs(coc): updated CODE_OF_CONDUCT.md'",
     "update-contrib": "weallcontribute -o . && git add CONTRIBUTING.md && git commit -m 'docs(contributing): updated CONTRIBUTING.md'"
