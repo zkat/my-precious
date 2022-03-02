@@ -21,7 +21,7 @@ function mockConfig (testDir, opts) {
     ca: null,
     cafile: null,
 
-    'cache': path.join(testDir, '.npm-cache'),
+    cache: path.join(testDir, '.npm-cache'),
 
     'cache-lock-stale': 60000,
     'cache-lock-retries': 10,
@@ -52,7 +52,8 @@ function mockConfig (testDir, opts) {
     'commit-hooks': true,
 
     global: false,
-    group: process.platform === 'win32' ? 0
+    group: process.platform === 'win32'
+      ? 0
       : process.env.SUDO_GID || (process.getgid && process.getgid()),
     heading: 'npm',
     'if-present': false,
@@ -72,7 +73,7 @@ function mockConfig (testDir, opts) {
     'metrics-registry': null,
     'node-options': null,
     'node-version': process.version,
-    'offline': false,
+    offline: false,
     'onload-script': false,
     only: null,
     optional: true,
@@ -84,7 +85,7 @@ function mockConfig (testDir, opts) {
     'prefer-online': false,
     prefix: path.join(testDir, '_global'),
     production: process.env.NODE_ENV === 'production',
-    'progress': !process.env.TRAVIS && !process.env.CI,
+    progress: !process.env.TRAVIS && !process.env.CI,
     proxy: null,
     'https-proxy': null,
     'user-agent': 'npm/{npm-version} ' +

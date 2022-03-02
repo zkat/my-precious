@@ -27,7 +27,7 @@ test('it works', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const integrity = ssri.fromData(tgzData).toString()
       const fixture = new Tacks(Dir({
@@ -52,10 +52,10 @@ test('it works', t => {
         })
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY})
+      const config = mockConfig(testDir, { registry: REGISTRY })
       tnock(t, REGISTRY).get('/bar/-/bar-1.0.1.tgz').reply(200, tgzData)
       const archivedResolved = `file:archived-packages/bar-1.0.1-${ssri.parse(integrity).hexDigest().slice(0, 9)}.tar`
-      return new MyPrecious({log: npmlog, config})
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => fs.readFileAsync('package-lock.json', 'utf8'))
         .then(JSON.parse)
@@ -94,7 +94,7 @@ test('it archives devdeps by default', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const integrity = ssri.fromData(tgzData).toString()
       const fixture = new Tacks(Dir({
@@ -120,10 +120,10 @@ test('it archives devdeps by default', t => {
         })
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY})
+      const config = mockConfig(testDir, { registry: REGISTRY })
       tnock(t, REGISTRY).get('/bar/-/bar-1.0.1.tgz').reply(200, tgzData)
       const archivedResolved = `file:archived-packages/bar-1.0.1-${ssri.parse(integrity).hexDigest().slice(0, 9)}.tar`
-      return new MyPrecious({log: npmlog, config})
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => fs.readFileAsync('package-lock.json', 'utf8'))
         .then(JSON.parse)
@@ -162,7 +162,7 @@ test('it does not archive devdeps with `only=production` config', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const integrity = ssri.fromData(tgzData).toString()
       const fixture = new Tacks(Dir({
@@ -188,8 +188,8 @@ test('it does not archive devdeps with `only=production` config', t => {
         })
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY, only: 'production'})
-      return new MyPrecious({log: npmlog, config})
+      const config = mockConfig(testDir, { registry: REGISTRY, only: 'production' })
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => fs.readFileAsync('package-lock.json', 'utf8'))
         .then(JSON.parse)
@@ -211,7 +211,7 @@ test('it works with npm-shrinkwrap files', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const integrity = ssri.fromData(tgzData).toString()
       const fixture = new Tacks(Dir({
@@ -236,10 +236,10 @@ test('it works with npm-shrinkwrap files', t => {
         })
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY})
+      const config = mockConfig(testDir, { registry: REGISTRY })
       tnock(t, REGISTRY).get('/bar/-/bar-1.0.1.tgz').reply(200, tgzData)
       const archivedResolved = `file:archived-packages/bar-1.0.1-${ssri.parse(integrity).hexDigest().slice(0, 9)}.tar`
-      return new MyPrecious({log: npmlog, config})
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => fs.readFileAsync('npm-shrinkwrap.json', 'utf8'))
         .then(JSON.parse)
@@ -278,7 +278,7 @@ test('fails if package-lock.json is out of sync with package.json', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const integrity = ssri.fromData(tgzData).toString()
       const fixture = new Tacks(Dir({
@@ -304,8 +304,8 @@ test('fails if package-lock.json is out of sync with package.json', t => {
         })
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY, loglevel: 'warn'})
-      return new MyPrecious({log: npmlog, config})
+      const config = mockConfig(testDir, { registry: REGISTRY, loglevel: 'warn' })
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => { throw new Error('Should not pass') }, error => {
           t.type(
@@ -332,7 +332,7 @@ test('fails if package-lock.json and npm-shrinkwrap are both missing', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const fixture = new Tacks(Dir({
         'package.json': File({
@@ -344,8 +344,8 @@ test('fails if package-lock.json and npm-shrinkwrap are both missing', t => {
         })
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY})
-      return new MyPrecious({log: npmlog, config})
+      const config = mockConfig(testDir, { registry: REGISTRY })
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => { throw new Error('Should not pass') }, error => {
           t.type(
@@ -368,7 +368,7 @@ test('fails if package.json is malformed', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const integrity = ssri.fromData(tgzData).toString()
       const fixture = new Tacks(Dir({
@@ -393,8 +393,8 @@ test('fails if package.json is malformed', t => {
         })
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY})
-      return new MyPrecious({log: npmlog, config})
+      const config = mockConfig(testDir, { registry: REGISTRY })
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => { throw new Error('Should not pass') }, error => {
           t.type(
@@ -417,7 +417,7 @@ test('fails if package-lock.json is malformed', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const integrity = ssri.fromData(tgzData).toString()
       const fixture = new Tacks(Dir({
@@ -442,8 +442,8 @@ test('fails if package-lock.json is malformed', t => {
         }) + 'malformed-package!')
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY})
-      return new MyPrecious({log: npmlog, config})
+      const config = mockConfig(testDir, { registry: REGISTRY })
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => { throw new Error('Should not pass') }, error => {
           t.type(
@@ -466,7 +466,7 @@ test('fails if npm-shrinkwrap.json is malformed', t => {
       version: '1.0.1'
     }),
     'index.js': 'hi'
-  }, {gzip: true})
+  }, { gzip: true })
     .then(tgzData => {
       const integrity = ssri.fromData(tgzData).toString()
       const fixture = new Tacks(Dir({
@@ -491,8 +491,8 @@ test('fails if npm-shrinkwrap.json is malformed', t => {
         }) + 'malformed-package!')
       }))
       fixture.create(testDir)
-      const config = mockConfig(testDir, {registry: REGISTRY})
-      return new MyPrecious({log: npmlog, config})
+      const config = mockConfig(testDir, { registry: REGISTRY })
+      return new MyPrecious({ log: npmlog, config })
         .run()
         .then(() => { throw new Error('Should not pass') }, error => {
           t.type(

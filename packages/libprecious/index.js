@@ -125,7 +125,7 @@ class MyPrecious {
     const prefix = this.prefix
     if (!pkg._shrinkwrap || !pkg._shrinkwrap.lockfileVersion) {
       return BB.reject(
-        new Error(`we can only install packages with an existing package-lock.json or npm-shrinkwrap.json with lockfileVersion >= 1. Run an install with npm@5 or later to generate it, then try again.`)
+        new Error('we can only install packages with an existing package-lock.json or npm-shrinkwrap.json with lockfileVersion >= 1. Run an install with npm@5 or later to generate it, then try again.')
       )
     }
     return lockVerify(prefix).then(result => {
@@ -176,7 +176,7 @@ class MyPrecious {
       .then(() => {
         if (alreadyExists) {
           this.log.silly('archiveTarball', `archive for ${spec} already exists`)
-          return ssri.fromStream(fs.createReadStream(pkgPath), {algorithms})
+          return ssri.fromStream(fs.createReadStream(pkgPath), { algorithms })
         }
         return new BB((resolve, reject) => {
           const tardata = pacote.tarball.stream(spec, this.config.toPacote({
@@ -187,7 +187,7 @@ class MyPrecious {
             integrity: dep.integrity
           }))
           const gunzip = zlib.createGunzip()
-          const sriStream = ssri.integrityStream({algorithms})
+          const sriStream = ssri.integrityStream({ algorithms })
           const out = fs.createWriteStream(pkgPath)
           let integrity
           sriStream.on('integrity', i => { integrity = i })
@@ -273,7 +273,7 @@ class MyPrecious {
       spec.registry || spec.type === 'file' || spec.type === 'remote'
     )) {
       const split = dep.integrity.split(/\s+/)
-      const shortHash = ssri.parse(split[split.length - 1], {single: true})
+      const shortHash = ssri.parse(split[split.length - 1], { single: true })
         .hexDigest()
         .substr(0, 9)
       suffix += `-${shortHash}`
@@ -294,7 +294,7 @@ class MyPrecious {
           .then(updated => Object.assign(dep, updated))
           .then(() => next())
       }
-    }, {concurrency: 50, Promise: BB})
+    }, { concurrency: 50, Promise: BB })
   }
 
   removeTarballs () {
@@ -356,7 +356,7 @@ class MyPrecious {
 
   cleanupArchives () {
     const removeMe = []
-    for (let f of this.existingArchives.values()) {
+    for (const f of this.existingArchives.values()) {
       if (!this.archives.has(f)) {
         removeMe.push(f)
       }
@@ -379,7 +379,7 @@ module.exports._readJson = readJson
 function readJson (jsonPath, name, ignoreMissing) {
   return readFileAsync(path.join(jsonPath, name), 'utf8')
     .then(str => JSON.parse(stripBOM(str)))
-    .catch({code: 'ENOENT'}, err => {
+    .catch({ code: 'ENOENT' }, err => {
       if (!ignoreMissing) {
         throw err
       }
