@@ -8,7 +8,7 @@ const mockTar = require('./util/mock-tarball.js')
 const tnock = require('./util/tnock.js')
 const npmlog = require('npmlog')
 const ssri = require('ssri')
-const Tacks = require('tacks')
+const Tacks = require('tacks-next')
 const test = require('tap').test
 
 const MyPrecious = require('../index.js')
